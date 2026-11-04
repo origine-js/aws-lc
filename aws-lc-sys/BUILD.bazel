@@ -79,6 +79,5 @@ rust_library(
     edition = "2021",
     crate_features = package_features("aws-lc-sys"),
     rustc_flags = ["--cfg=universal"],
-    link_deps = ["//lib/aws-lc:aws_lc_crypto"],
     visibility = ["//visibility:public"],
 )
