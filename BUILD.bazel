@@ -1,0 +1,2 @@
+alias(name = "aws_lc_crypto", actual = "//lib/aws-lc/aws-lc-sys:aws_lc_crypto", visibility = ["//visibility:public"])
+alias(name = "aws_lc_ssl", actual = "//lib/aws-lc/aws-lc-sys:aws_lc_ssl", visibility = ["//visibility:public"])

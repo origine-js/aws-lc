@@ -1,0 +1,84 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+load("//build/bazel:rust_dependencies.bzl", "package_features")
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//lib/aws-lc:sources.bzl", "APPLE_AARCH64_ASM", "APPLE_AARCH64_S2N", "JITTER_SOURCES", "SSL_C", "SSL_CC", "UNIVERSAL")
+
+package(default_visibility = ["//visibility:public"])
+
+_HEADERS = glob(["**/*.h", "**/*.inc", "aws-lc/crypto/fipsmodule/**/*.c"])
+_INCLUDES = [
+    "generated-include",
+    "include",
+    "aws-lc/include",
+    "aws-lc/third_party/s2n-bignum/include",
+    "aws-lc/third_party/s2n-bignum/s2n-bignum-imported/include",
+    "aws-lc/third_party/jitterentropy/jitterentropy-library",
+    "aws-lc/third_party/jitterentropy/jitterentropy-library/src",
+]
+_DEFINES = [
+    "BORINGSSL_IMPLEMENTATION=1",
+    # The vendored aws-lc-sys version (Cargo.toml here), as its generated prefix headers use it.
+    "BORINGSSL_PREFIX=aws_lc_0_47_0",
+    "AWS_LC_STDALIGN_AVAILABLE=1",
+    "AWS_LC_BUILTIN_SWAP_SUPPORTED=1",
+    "MY_ASSEMBLER_SUPPORTS_NEON_SHA3_EXTENSION=1",
+    "_DARWIN_C_SOURCE=1",
+]
+
+cc_library(
+    name = "crypto_base",
+    srcs = UNIVERSAL + APPLE_AARCH64_ASM,
+    hdrs = _HEADERS,
+    includes = _INCLUDES,
+    defines = _DEFINES,
+    copts = ["-Wno-unused-parameter", "-pthread"],
+)
+
+cc_library(
+    name = "s2n",
+    additional_compiler_inputs = ["generated-include/openssl/boringssl_prefix_symbols_asm.h"],
+    srcs = APPLE_AARCH64_S2N,
+    hdrs = _HEADERS,
+    includes = _INCLUDES,
+    defines = _DEFINES + ["S2N_BN_HIDE_SYMBOLS=1"],
+    copts = ["-include", "$(execpath //lib/aws-lc/aws-lc-sys:generated-include/openssl/boringssl_prefix_symbols_asm.h)"],
+)
+
+cc_library(
+    name = "jitter",
+    additional_compiler_inputs = ["generated-include/openssl/boringssl_prefix_symbols.h"],
+    srcs = JITTER_SOURCES,
+    hdrs = _HEADERS,
+    includes = _INCLUDES,
+    defines = _DEFINES + ["AWSLC=1"],
+    copts = ["-O0", "-fno-lto", "-fwrapv", "-fvisibility=hidden", "-U_FORTIFY_SOURCE", "-include", "$(execpath //lib/aws-lc/aws-lc-sys:generated-include/openssl/boringssl_prefix_symbols.h)"],
+)
+
+cc_library(name = "aws_lc_crypto", deps = [":crypto_base", ":s2n", ":jitter"])
+
+cc_library(
+    name = "aws_lc_ssl",
+    srcs = SSL_C + SSL_CC,
+    hdrs = _HEADERS,
+    includes = _INCLUDES,
+    defines = _DEFINES,
+    copts = ["-fno-exceptions", "-fno-rtti"],
+    deps = [":aws_lc_crypto"],
+)
+
+exports_files([
+    "Cargo.toml",
+    "generated-include/openssl/boringssl_prefix_symbols.h",
+    "generated-include/openssl/boringssl_prefix_symbols_asm.h",
+])
+
+rust_library(
+    name = "aws_lc_sys",
+    srcs = glob(["src/**/*.rs"]),
+    crate_root = "src/lib.rs",
+    edition = "2021",
+    crate_features = package_features("aws-lc-sys"),
+    rustc_flags = ["--cfg=universal"],
+    link_deps = ["//lib/aws-lc:aws_lc_crypto"],
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,14 @@
+load("@rules_rust//rust:defs.bzl", "rust_library")
+load("//build/bazel:rust_dependencies.bzl", "package_features", "registry_deps")
+
+exports_files(["Cargo.toml"])
+
+rust_library(
+    name = "aws_lc_rs",
+    srcs = glob(["src/**/*.rs"]),
+    crate_root = "src/lib.rs",
+    edition = "2021",
+    deps = ["//lib/aws-lc/aws-lc-sys:aws_lc_sys"] + registry_deps("aws-lc-rs"),
+    crate_features = package_features("aws-lc-rs"),
+    visibility = ["//visibility:public"],
+)
