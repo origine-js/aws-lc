@@ -1,6 +1,7 @@
 load("@rules_rust//rust:defs.bzl", "rust_library")
 load("//build/bazel:rust_dependencies.bzl", "package_features")
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//build/bazel:opt.bzl", "c_opt")
 load("//lib/aws-lc:sources.bzl", "APPLE_AARCH64_ASM", "APPLE_AARCH64_S2N", "JITTER_SOURCES", "SSL_C", "SSL_CC", "UNIVERSAL")
 
 package(default_visibility = ["//visibility:public"])
@@ -31,7 +32,7 @@ cc_library(
     hdrs = _HEADERS,
     includes = _INCLUDES,
     defines = _DEFINES,
-    copts = ["-Wno-unused-parameter", "-pthread"],
+    copts = ["-Wno-unused-parameter", "-pthread"] + c_opt("aws_lc"),
 )
 
 cc_library(
@@ -41,7 +42,7 @@ cc_library(
     hdrs = _HEADERS,
     includes = _INCLUDES,
     defines = _DEFINES + ["S2N_BN_HIDE_SYMBOLS=1"],
-    copts = ["-include", "$(execpath //lib/aws-lc/aws-lc-sys:generated-include/openssl/boringssl_prefix_symbols_asm.h)"],
+    copts = ["-include", "$(execpath //lib/aws-lc/aws-lc-sys:generated-include/openssl/boringssl_prefix_symbols_asm.h)"] + c_opt("aws_lc"),
 )
 
 cc_library(
@@ -62,7 +63,7 @@ cc_library(
     hdrs = _HEADERS,
     includes = _INCLUDES,
     defines = _DEFINES,
-    copts = ["-fno-exceptions", "-fno-rtti"],
+    copts = ["-fno-exceptions", "-fno-rtti"] + c_opt("aws_lc"),
     deps = [":aws_lc_crypto"],
 )
 
